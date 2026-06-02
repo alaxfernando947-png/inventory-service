@@ -1,0 +1,49 @@
+version: '3.9'
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: divenclasse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: divenclasse_inventory
+      POSTGRES_USER: divenclasse
+      POSTGRES_PASSWORD: divenclasse123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - divenclasse-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U divenclasse -d divenclasse_inventory"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: divenclasse-inventory
+    restart: on-failure
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/divenclasse_inventory
+      DB_USER: divenclasse
+      DB_PASS: divenclasse123
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - divenclasse-net
+
+volumes:
+  postgres-data:
+
+networks:
+  divenclasse-net:
+    driver: bridge
